@@ -1097,3 +1097,76 @@ img {
         flex: 0 0 30%;
     }
 }
+/* ============================================================
+   13. DEMOGRAPHICS
+   ============================================================ */
+
+.demographic-block {
+    padding: 14px 0;
+    border-bottom: 1px solid #f3f1ee;
+}
+
+.demographic-block:last-child {
+    border-bottom: none;
+}
+
+.demographic-question {
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 12px;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.demographic-text-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 12px;
+    border: 1px solid #d8d4cf;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #333;
+    background: #fafafa;
+    transition: border-color 0.2s ease;
+}
+
+.demographic-text-input:focus {
+    outline: none;
+    border-color: #5b4bdb;
+    background: #ffffff;
+}
+
+.demographic-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.demographic-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: background 0.15s ease;
+}
+
+.demographic-option:hover {
+    background: #f5f4ff;
+}
+
+.demographic-option input {
+    margin-top: 2px;
+    accent-color: #5b4bdb;
+    flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+    .demographic-text-input {
+        max-width: 100%;
+    }
+}
