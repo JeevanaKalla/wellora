@@ -16,7 +16,7 @@ const CONDITION_OVERRIDE = urlParams.get("condition");
    ------------------------------------------------------------ */
 
 const COLLECTION_ENDPOINT =
-    "https://script.google.com/macros/s/AKfycbz_3J7GTbToay7MBmCBRxLzR5q77Dod-bEkQtBa3GLfNoM1_xcqM7ZvwKoElx0KYa0z/exec";
+    "https://script.google.com/macros/s/AKfycbxAkB8iUxd1tsnLjaJljD8wBbW7boHKrGrb-SCmJpTcYZxByrTbs1SoYyH2RvNiRuz-/exec";
 
 async function submitToServer() {
     if (!COLLECTION_ENDPOINT || COLLECTION_ENDPOINT.includes("PASTE_YOUR")) {
@@ -106,6 +106,7 @@ const experimentData = {
         consumerControl: CURRENT_CONDITION.control
     },
     events: [],
+    demographics: {},
     questionnaire: {},
     manipulationChecks: {},
     controlVariables: {},
@@ -573,7 +574,7 @@ function offerDisablePersonalization() {
 }
 
 /* ============================================================
-   10. QUESTIONNAIRE
+   10. QUESTIONNAIRE DATA DEFINITIONS
    ============================================================ */
 
 const LIKERT = [
@@ -730,6 +731,77 @@ const CONTROL_VARIABLES = [
     }
 ];
 
+/* ------------------------------------------------------------
+   DEMOGRAPHICS
+   ------------------------------------------------------------ */
+
+const DEMOGRAPHIC_BLOCKS = [
+    {
+        key: "age",
+        type: "text",
+        question: "How old are you?",
+        placeholder: "Enter your age in years"
+    },
+    {
+        key: "gender",
+        type: "radio",
+        question: "How do you identify?",
+        options: [
+            { value: "woman", label: "Woman" },
+            { value: "man", label: "Man" },
+            { value: "nonbinary", label: "Non-binary" },
+            { value: "prefer_not", label: "Prefer not to say" }
+        ]
+    },
+    {
+        key: "country",
+        type: "text",
+        question: "In which country do you currently live?",
+        placeholder: "Enter your country of residence"
+    },
+    {
+        key: "education",
+        type: "radio",
+        question: "What is your highest level of education completed?",
+        options: [
+            { value: "secondary", label: "Secondary school" },
+            { value: "some_college", label: "Some college or university" },
+            { value: "bachelor", label: "Bachelor's degree" },
+            { value: "master_plus", label: "Master's degree or higher" }
+        ]
+    },
+    {
+        key: "employment",
+        type: "radio",
+        question: "What is your current employment status?",
+        options: [
+            { value: "full_time", label: "Full-time" },
+            { value: "part_time", label: "Part-time" },
+            { value: "student", label: "Student" },
+            { value: "self_employed", label: "Self-employed" },
+            { value: "not_employed", label: "Not currently employed" },
+            { value: "retired", label: "Retired" },
+            { value: "prefer_not", label: "Prefer not to say" }
+        ]
+    },
+    {
+        key: "ai_usage",
+        type: "checkbox",
+        question: "Which of the following have you used in the past 12 months? (Select all that apply)",
+        options: [
+            { value: "ai_shopping", label: "AI-powered shopping recommendations" },
+            { value: "chatbots", label: "Conversational AI assistants (e.g., chatbots)" },
+            { value: "social_feeds", label: "Social media recommendation feeds" },
+            { value: "streaming", label: "Streaming service recommendations" },
+            { value: "none", label: "None of the above" }
+        ]
+    }
+];
+
+/* ============================================================
+   11. QUESTIONNAIRE RENDERING
+   ============================================================ */
+
 function renderQuestionnaireBlock(block, prefix) {
     const itemsHTML = block.items
         .map((item, idx) => {
@@ -756,6 +828,51 @@ function renderQuestionnaireBlock(block, prefix) {
             <legend>${block.title}</legend>
             ${itemsHTML}
         </fieldset>
+    `;
+}
+
+function renderDemographicBlock(block) {
+    let inputHTML = "";
+
+    if (block.type === "text") {
+        inputHTML = `
+            <input
+                type="text"
+                name="demo_${block.key}"
+                class="demographic-text-input"
+                placeholder="${block.placeholder || ''}"
+                required
+            >
+        `;
+    } else if (block.type === "radio") {
+        inputHTML = `
+            <div class="demographic-options">
+                ${block.options.map((o) => `
+                    <label class="demographic-option">
+                        <input type="radio" name="demo_${block.key}" value="${o.value}" required>
+                        <span>${o.label}</span>
+                    </label>
+                `).join("")}
+            </div>
+        `;
+    } else if (block.type === "checkbox") {
+        inputHTML = `
+            <div class="demographic-options">
+                ${block.options.map((o) => `
+                    <label class="demographic-option">
+                        <input type="checkbox" name="demo_${block.key}" value="${o.value}">
+                        <span>${o.label}</span>
+                    </label>
+                `).join("")}
+            </div>
+        `;
+    }
+
+    return `
+        <div class="demographic-block" data-key="${block.key}">
+            <p class="demographic-question">${block.question}</p>
+            ${inputHTML}
+        </div>
     `;
 }
 
@@ -789,6 +906,9 @@ function showQuestionnaire() {
             <h3>Part 3 — About you</h3>
             ${CONTROL_VARIABLES.map((b) => renderQuestionnaireBlock(b, "control")).join("")}
 
+            <h3>Part 4 — Demographic information</h3>
+            ${DEMOGRAPHIC_BLOCKS.map((b) => renderDemographicBlock(b)).join("")}
+
             <div class="questionnaire-actions">
                 <button type="submit" class="primary-button">Submit responses</button>
             </div>
@@ -816,6 +936,10 @@ function readLikertBlock(form, prefix, key, expectedItems) {
     return responses;
 }
 
+/* ============================================================
+   12. QUESTIONNAIRE SUBMIT
+   ============================================================ */
+
 function handleQuestionnaireSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -839,6 +963,21 @@ function handleQuestionnaireSubmit(event) {
         );
     });
 
+    // Collect demographics
+    experimentData.demographics = {};
+    DEMOGRAPHIC_BLOCKS.forEach((block) => {
+        if (block.type === "text") {
+            const input = form.querySelector(`input[name="demo_${block.key}"]`);
+            experimentData.demographics[block.key] = input ? input.value.trim() : "";
+        } else if (block.type === "radio") {
+            const selected = form.querySelector(`input[name="demo_${block.key}"]:checked`);
+            experimentData.demographics[block.key] = selected ? selected.value : null;
+        } else if (block.type === "checkbox") {
+            const checked = form.querySelectorAll(`input[name="demo_${block.key}"]:checked`);
+            experimentData.demographics[block.key] = Array.from(checked).map(c => c.value);
+        }
+    });
+
     experimentData.sessionEnd = new Date().toISOString();
 
     logEvent("questionnaire_submitted");
@@ -858,7 +997,7 @@ function handleQuestionnaireSubmit(event) {
 }
 
 /* ============================================================
-   11. DATA EXPORT (fallback — downloads JSON locally)
+   13. DATA EXPORT (fallback — downloads JSON locally)
    ============================================================ */
 
 function downloadData() {
@@ -882,7 +1021,7 @@ function downloadData() {
 }
 
 /* ============================================================
-   12. INITIALIZATION
+   14. INITIALIZATION
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -910,7 +1049,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /* ============================================================
-   13. GLOBAL HANDLES
+   15. GLOBAL HANDLES
    ============================================================ */
 
 window.experimentData = experimentData;
