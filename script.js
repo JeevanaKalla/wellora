@@ -7,20 +7,40 @@
    1. CONFIGURATION
    ============================================================ */
 
-// Which study are we running? Override with ?study=2 / ?study=3 / ?study=4
 const urlParams = new URLSearchParams(window.location.search);
 const STUDY = parseInt(urlParams.get("study")) || 2;
-
-// Condition override for testing: ?condition=1 ... ?condition=6
-// If not provided, random assignment is used.
 const CONDITION_OVERRIDE = urlParams.get("condition");
 
 /* ------------------------------------------------------------
+   DATA COLLECTION ENDPOINT (Google Apps Script)
+   ------------------------------------------------------------ */
+
+const COLLECTION_ENDPOINT =
+    "https://script.google.com/macros/s/AKfycbz_3J7GTbToay7MBmCBRxLzR5q77Dod-bEkQtBa3GLfNoM1_xcqM7ZvwKoElx0KYa0z/exec";
+
+async function submitToServer() {
+    if (!COLLECTION_ENDPOINT || COLLECTION_ENDPOINT.includes("PASTE_YOUR")) {
+        console.warn("No collection endpoint configured.");
+        return false;
+    }
+
+    try {
+        await fetch(COLLECTION_ENDPOINT, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(experimentData)
+        });
+        console.log("Data submitted to server.");
+        return true;
+    } catch (err) {
+        console.error("Server submission failed:", err);
+        return false;
+    }
+}
+
+/* ------------------------------------------------------------
    CONDITION MAPS
-   ------------------------------------------------------------
-   Study 2: 2 (personalization) x 2 (control) = 4 cells
-   Study 3: 2 (personalization) x 3 (control: none/optout/optin) = 6 cells
-   Study 4: same as Study 2 (plus IAT later)
    ------------------------------------------------------------ */
 
 const STUDY2_CONDITIONS = {
@@ -64,7 +84,6 @@ function generateParticipantID() {
     return "W" + timestamp + randomNumber;
 }
 
-// Persist participant ID across reloads within the session
 let participantID = sessionStorage.getItem("wellora_pid");
 if (!participantID) {
     participantID = generateParticipantID();
@@ -91,8 +110,8 @@ const experimentData = {
     manipulationChecks: {},
     controlVariables: {},
     behavioural: {
-        recommendationChoice: null,    // "accept" | "browse_independent"
-        disabledPersonalization: null  // true | false | null
+        recommendationChoice: null,
+        disabledPersonalization: null
     }
 };
 
@@ -128,9 +147,6 @@ console.log("======================================");
 
 /* ============================================================
    6. RECOMMENDATION CONTENT
-   ------------------------------------------------------------
-   Produces the AI message HTML for the current condition,
-   using the exact wording from Appendix B and C.
    ============================================================ */
 
 function recommendationProducts() {
@@ -165,8 +181,6 @@ function getRecommendationContent() {
     const p = CURRENT_CONDITION.personalization;
     const c = CURRENT_CONDITION.control;
 
-    /* ---------- LOW PERSONALIZATION ---------- */
-
     if (p === "low") {
 
         const behaviouralMessage = `
@@ -177,7 +191,6 @@ function getRecommendationContent() {
             </p>
         `;
 
-        // Study 2: low control
         if (c === "low") {
             return `
                 <div class="ai-message">
@@ -191,7 +204,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 2: high control
         if (c === "high") {
             return `
                 <div class="ai-message">
@@ -218,7 +230,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 3: none
         if (c === "none") {
             return `
                 <div class="ai-message">
@@ -232,7 +243,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 3: optout
         if (c === "optout") {
             return `
                 <div class="ai-message">
@@ -258,7 +268,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 3: optin
         if (c === "optin") {
             return `
                 <div class="ai-message">
@@ -285,8 +294,6 @@ function getRecommendationContent() {
         }
     }
 
-    /* ---------- HIGH PERSONALIZATION ---------- */
-
     if (p === "high") {
 
         const emotionalMessage = `
@@ -300,7 +307,6 @@ function getRecommendationContent() {
             </p>
         `;
 
-        // Study 2: low control
         if (c === "low") {
             return `
                 <div class="ai-message">
@@ -315,7 +321,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 2: high control
         if (c === "high") {
             return `
                 <div class="ai-message">
@@ -349,7 +354,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 3: none
         if (c === "none") {
             return `
                 <div class="ai-message">
@@ -374,7 +378,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 3: optout
         if (c === "optout") {
             return `
                 <div class="ai-message">
@@ -402,7 +405,6 @@ function getRecommendationContent() {
             `;
         }
 
-        // Study 3: optin
         if (c === "optin") {
             return `
                 <div class="ai-message">
@@ -447,16 +449,13 @@ function showRecommendation() {
         return;
     }
 
-    // Render AI message for the condition
     messageArea.innerHTML = getRecommendationContent();
 
-    // Log which message was shown
     logEvent("recommendation_shown", {
         personalization: CURRENT_CONDITION.personalization,
         control: CURRENT_CONDITION.control
     });
 
-    // Bind control checkbox if present
     const controlCheckbox = document.getElementById("experimentalControl");
     if (controlCheckbox) {
         controlCheckbox.addEventListener("change", function () {
@@ -467,20 +466,17 @@ function showRecommendation() {
         });
     }
 
-    // Repurpose the primary button
     if (primaryBtn) {
         primaryBtn.innerText = "Continue with AI";
         primaryBtn.disabled = false;
         primaryBtn.onclick = acceptRecommendation;
     }
 
-    // Wire secondary button
     if (secondaryBtn) {
         secondaryBtn.onclick = browseIndependently;
         secondaryBtn.disabled = false;
     }
 
-    // Feedback
     const feedback = document.getElementById("choiceFeedback");
     if (feedback) {
         feedback.textContent =
@@ -512,10 +508,7 @@ function acceptRecommendation() {
             "You chose to continue with the AI recommendation.";
     }
 
-    // Offer disable option if emotional personalization
     offerDisablePersonalization();
-
-    // Move to questionnaire
     setTimeout(showQuestionnaire, 800);
 }
 
@@ -544,7 +537,7 @@ function browseIndependently() {
 }
 
 /* ============================================================
-   9. DISABLE PERSONALIZATION (Appendix B2.8)
+   9. DISABLE PERSONALIZATION
    ============================================================ */
 
 function offerDisablePersonalization() {
@@ -581,8 +574,6 @@ function offerDisablePersonalization() {
 
 /* ============================================================
    10. QUESTIONNAIRE
-   ------------------------------------------------------------
-   All items from Appendix E, 7-point Likert.
    ============================================================ */
 
 const LIKERT = [
@@ -658,7 +649,6 @@ const QUESTIONNAIRE_BLOCKS = [
     }
 ];
 
-// Study 3 adds legitimacy + acceptance
 if (STUDY === 3) {
     QUESTIONNAIRE_BLOCKS.push({
         key: "perceived_legitimacy",
@@ -770,14 +760,12 @@ function renderQuestionnaireBlock(block, prefix) {
 }
 
 function showQuestionnaire() {
-    // Append to the dedicated questionnaire container in index.html
     const container = document.getElementById("questionnaireContainer");
     if (!container) {
         console.error("ERROR: #questionnaireContainer not found in DOM.");
         return;
     }
 
-    // Remove any existing questionnaire (safety)
     const existing = document.getElementById("questionnaireSection");
     if (existing) existing.remove();
 
@@ -832,21 +820,18 @@ function handleQuestionnaireSubmit(event) {
     event.preventDefault();
     const form = event.target;
 
-    // Main constructs
     QUESTIONNAIRE_BLOCKS.forEach((b) => {
         experimentData.questionnaire[b.key] = readLikertBlock(
             form, "main", b.key, b.items.length
         );
     });
 
-    // Manipulation checks
     MANIPULATION_CHECKS.forEach((b) => {
         experimentData.manipulationChecks[b.key] = readLikertBlock(
             form, "check", b.key, b.items.length
         );
     });
 
-    // Control variables
     experimentData.controlVariables = {};
     CONTROL_VARIABLES.forEach((b) => {
         experimentData.controlVariables[b.key] = readLikertBlock(
@@ -858,7 +843,6 @@ function handleQuestionnaireSubmit(event) {
 
     logEvent("questionnaire_submitted");
 
-    // Confirmation message
     const confirmation = document.getElementById("questionnaireConfirmation");
     if (confirmation) {
         confirmation.textContent =
@@ -866,18 +850,15 @@ function handleQuestionnaireSubmit(event) {
         confirmation.classList.add("visible");
     }
 
-    // Disable form
     form.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
 
-    // If Study 4, IAT runs next (iat.js detects confirmation)
-    // Otherwise, download data now
     if (STUDY !== 4) {
-        setTimeout(() => downloadData(), 600);
+        setTimeout(() => submitToServer(), 600);
     }
 }
 
 /* ============================================================
-   11. DATA EXPORT
+   11. DATA EXPORT (fallback — downloads JSON locally)
    ============================================================ */
 
 function downloadData() {
@@ -929,7 +910,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /* ============================================================
-   13. GLOBAL HANDLES (for debugging in console)
+   13. GLOBAL HANDLES
    ============================================================ */
 
 window.experimentData = experimentData;
@@ -938,3 +919,4 @@ window.browseIndependently = browseIndependently;
 window.showQuestionnaire = showQuestionnaire;
 window.downloadData = downloadData;
 window.logEvent = logEvent;
+window.submitToServer = submitToServer;
