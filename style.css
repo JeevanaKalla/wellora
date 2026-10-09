@@ -1170,3 +1170,112 @@ img {
         max-width: 100%;
     }
 }
+/* ============================================================
+   14. STUDY INSTRUCTION BANNER
+   ============================================================ */
+
+.instruction-banner {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9000;
+    background: linear-gradient(135deg, #4e42b8, #6c63ff);
+    color: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    animation: slideDown 0.4s ease;
+}
+
+.instruction-banner.visible {
+    display: block;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+
+.instruction-content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.instruction-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.instruction-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #ffffff;
+}
+
+.instruction-text strong {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+    font-size: 15px;
+}
+
+.instruction-text ol {
+    margin: 8px 0 0 20px;
+    padding: 0;
+}
+
+.instruction-text li {
+    margin-bottom: 4px;
+    font-size: 13.5px;
+}
+
+.instruction-dismiss {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s ease;
+}
+
+.instruction-dismiss:hover {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+body.has-instruction .site-header {
+    top: var(--instruction-height, 0px);
+}
+
+body.has-instruction {
+    padding-top: var(--instruction-height, 0px);
+}
+
+@media (max-width: 700px) {
+    .instruction-content {
+        padding: 14px 16px;
+        gap: 10px;
+    }
+
+    .instruction-text {
+        font-size: 13px;
+    }
+
+    .instruction-text strong {
+        font-size: 14px;
+    }
+
+    .instruction-text li {
+        font-size: 12.5px;
+    }
+}
