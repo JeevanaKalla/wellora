@@ -4,7 +4,7 @@
    ============================================================ */
 
 /* ============================================================
-   1. STIMULI (Appendix D1.1 & D1.2)
+   1. STIMULI
    ============================================================ */
 
 const IAT_STIMULI = {
@@ -15,17 +15,7 @@ const IAT_STIMULI = {
 };
 
 /* ============================================================
-   2. BLOCK DEFINITIONS (Appendix D1.3)
-   ------------------------------------------------------------
-   Standard 7-block IAT:
-     1. Target discrimination       (20 trials)
-     2. Attribute discrimination    (20 trials)
-     3. Combined practice            (20 trials)
-     4. Combined test                (40 trials)
-     5. Target reversed              (20 trials)
-     6. Combined practice reversed   (20 trials)
-     7. Combined test reversed       (40 trials)
-   Total: 180 trials
+   2. BLOCK DEFINITIONS
    ============================================================ */
 
 const IAT_BLOCKS = [
@@ -115,29 +105,19 @@ const iatState = {
     trialIndex: 0,
     currentBlock: null,
     currentStimulus: null,
-    correctSide: null,          // "left" | "right"
+    correctSide: null,
     awaitingResponse: false,
     showError: false,
     trialSequence: [],
-
-    // Timing
     trialStartTime: null,
-
-    // Data collection
     trials: [],
-
-    // Counterbalancing
     compatibleFirst: Math.random() < 0.5,
-
-    // Anti-cheat / quality
     tooFastCount: 0,
-
-    // Internal
     _keyHandlerBound: false
 };
 
 /* ============================================================
-   4. TIMING CONSTANTS
+   4. TIMING
    ============================================================ */
 
 const FIXATION_MS = 500;
@@ -199,7 +179,6 @@ function buildTrialSequence(block) {
             pool.push({ word: pickRandom(rightWords), category: block.rightCategory, side: "right" });
         }
     } else {
-        // Combined
         while (pool.length < block.trials) {
             const leftCat = pickRandom(block.leftCategories);
             pool.push({
@@ -311,11 +290,7 @@ function startIAT() {
     if (intro) intro.style.display = "none";
     if (stage) stage.style.display = "block";
 
-    // Counterbalance block order
     if (!iatState.compatibleFirst) {
-        // Move blocks 3,4 to end; move 5,6,7 up
-        // Original: [1,2,3,4,5,6,7]
-        // New:      [1,2,5,6,7,3,4]
         const reordered = [
             IAT_BLOCKS[0],
             IAT_BLOCKS[1],
@@ -325,7 +300,6 @@ function startIAT() {
             IAT_BLOCKS[2],
             IAT_BLOCKS[3]
         ];
-        // Reassign IDs so D-score computation uses `compatible` flag (not block id)
         reordered.forEach((b, i) => { b.id = i + 1; });
         IAT_BLOCKS.length = 0;
         IAT_BLOCKS.push(...reordered);
@@ -421,7 +395,6 @@ function handleIATKeydown(event) {
 
     const key = event.key.toLowerCase();
 
-    // Error state: any E/I clears it
     if (iatState.showError) {
         if (key === "e" || key === "i") {
             event.preventDefault();
@@ -438,7 +411,6 @@ function handleIATKeydown(event) {
         return;
     }
 
-    // Normal response
     if (key !== "e" && key !== "i") return;
     event.preventDefault();
 
@@ -524,23 +496,19 @@ function finishIAT() {
     console.log("IAT D-score:", dScore.value);
     console.log("D-score details:", dScore.details);
 
-    // Auto-download the full dataset
+    // Submit full dataset (including IAT) to the server
     setTimeout(() => {
-        if (typeof window.downloadData === "function") {
-            window.downloadData();
+        if (typeof window.submitToServer === "function") {
+            window.submitToServer();
         }
     }, 800);
 }
 
 /* ============================================================
    14. D-SCORE COMPUTATION
-   ------------------------------------------------------------
-   Improved algorithm (Greenwald, Nosek & Banaji, 2003).
-   Only combined blocks are used.
    ============================================================ */
 
 function computeDScore(allTrials) {
-    // 1. Select combined-block trials
     const combined = allTrials.filter(t => t.blockType === "combined");
 
     if (combined.length === 0) {
@@ -550,7 +518,6 @@ function computeDScore(allTrials) {
         };
     }
 
-    // 2. Split by compatibility flag
     const compatibleTrials   = combined.filter(t => t.compatible === true);
     const incompatibleTrials = combined.filter(t => t.compatible === false);
 
@@ -561,7 +528,6 @@ function computeDScore(allTrials) {
         };
     }
 
-    // 3. Trim latencies > 10000 ms
     const trim = (arr) => arr.filter(t => t.latency <= 10000);
     const comp = trim(compatibleTrials);
     const incomp = trim(incompatibleTrials);
@@ -573,7 +539,6 @@ function computeDScore(allTrials) {
         };
     }
 
-    // 4. Error penalty: replace error latencies with (blockMean + 600)
     const applyPenalty = (arr) => {
         const correctLatencies = arr
             .filter(t => t.correct)
@@ -592,11 +557,9 @@ function computeDScore(allTrials) {
     const compAdj   = applyPenalty(comp);
     const incompAdj = applyPenalty(incomp);
 
-    // 5. Means
     const meanComp   = compAdj.reduce((s, t) => s + t.adjustedLatency, 0) / compAdj.length;
     const meanIncomp = incompAdj.reduce((s, t) => s + t.adjustedLatency, 0) / incompAdj.length;
 
-    // 6. Pooled SD from both combined conditions
     const allAdj = [...compAdj, ...incompAdj];
     const grandMean = allAdj.reduce((s, t) => s + t.adjustedLatency, 0) / allAdj.length;
     const variance = allAdj.reduce(
@@ -611,20 +574,6 @@ function computeDScore(allTrials) {
             details: { error: "Pooled SD is zero." }
         };
     }
-
-    // 7. D-score
-    //    Appendix D2.1: D = (M_incompatible - M_compatible) / SD_pooled
-    //    Appendix D2.1 (interpretation): Positive D = stronger EP ↔ Manipulation
-    //
-    //    Interpretation:
-    //    - Compatible block pairs EP with Understanding
-    //    - Incompatible block pairs EP with Manipulation
-    //    - If participants have a stronger implicit EP↔Manipulation association,
-    //      they respond SLOWER on the compatible (EP+Understanding) block.
-    //    - So M_compatible > M_incompatible → D should be positive.
-    //    - That means: D = (M_compatible - M_incompatible) / SD_pooled
-    //
-    //    We follow the appendix's stated interpretation literally.
 
     const d = (meanComp - meanIncomp) / pooledSD;
 
@@ -643,9 +592,6 @@ function computeDScore(allTrials) {
 
 /* ============================================================
    15. AUTO-LAUNCH (Study 4 only)
-   ------------------------------------------------------------
-   Renders the IAT interface and waits for the questionnaire
-   to be submitted before scrolling it into view.
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -671,7 +617,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /* ============================================================
-   16. GLOBAL HANDLES (debugging)
+   16. GLOBAL HANDLES
    ============================================================ */
 
 window.iatState = iatState;
