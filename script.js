@@ -1,6 +1,6 @@
 /* ============================================================
    WELLORA EXPERIMENTAL SHOPPING PLATFORM
-   Study 2 / Study 3 / Study 4 — Complete Logic
+   Studies 1–4 — Complete Logic (clean version)
    ============================================================ */
 
 /* ============================================================
@@ -8,11 +8,11 @@
    ============================================================ */
 
 const urlParams = new URLSearchParams(window.location.search);
-const STUDY = parseInt(urlParams.get("study")) || 2;
+const STUDY = parseInt(urlParams.get("study")) || 1;
 const CONDITION_OVERRIDE = urlParams.get("condition");
 
 /* ------------------------------------------------------------
-   DATA COLLECTION ENDPOINT (Google Apps Script)
+   DATA COLLECTION ENDPOINT
    ------------------------------------------------------------ */
 
 const COLLECTION_ENDPOINT =
@@ -41,16 +41,20 @@ async function submitToServer() {
 
 /* ------------------------------------------------------------
    CONDITION MAPS
+   ------------------------------------------------------------
+   Study 1: 2 (personalization) x 2 (control) = 4 cells
+   Study 2: 2 (personalization) x 3 (control: none/optout/optin) = 6 cells
+   Study 4: 2 x 2 (same as Study 1) + IAT
    ------------------------------------------------------------ */
 
-const STUDY2_CONDITIONS = {
+const STUDY1_CONDITIONS = {
     1: { personalization: "low",  control: "low"  },
     2: { personalization: "low",  control: "high" },
     3: { personalization: "high", control: "low"  },
     4: { personalization: "high", control: "high" }
 };
 
-const STUDY3_CONDITIONS = {
+const STUDY2_CONDITIONS = {
     1: { personalization: "low",  control: "none"   },
     2: { personalization: "low",  control: "optout" },
     3: { personalization: "low",  control: "optin"  },
@@ -60,7 +64,7 @@ const STUDY3_CONDITIONS = {
 };
 
 function getConditionMap() {
-    return STUDY === 3 ? STUDY3_CONDITIONS : STUDY2_CONDITIONS;
+    return STUDY === 2 ? STUDY2_CONDITIONS : STUDY1_CONDITIONS;
 }
 
 function assignCondition() {
@@ -99,6 +103,7 @@ const sessionStartTime = new Date().toISOString();
 const experimentData = {
     participantID: participantID,
     study: STUDY,
+    mode: "interactive",
     sessionStart: sessionStartTime,
     conditionID: CONDITION_ID,
     condition: {
@@ -110,6 +115,7 @@ const experimentData = {
     questionnaire: {},
     manipulationChecks: {},
     controlVariables: {},
+    mouseTracking: {},
     behavioural: {
         recommendationChoice: null,
         disabledPersonalization: null
@@ -147,7 +153,86 @@ console.log("Session started:          ", sessionStartTime);
 console.log("======================================");
 
 /* ============================================================
-   6. RECOMMENDATION CONTENT
+   6. INSTRUCTION BANNER
+   ============================================================ */
+
+const INSTRUCTIONS = {
+    1: `
+        <strong>Welcome to this study</strong>
+        You are about to interact with a simulated online store called Wellora.
+        Please proceed at your own pace. Complete the following steps:
+        <ol>
+            <li>Click <b>"Show My Recommendations"</b> in the AI assistant (bottom-right corner).</li>
+            <li>Read the AI's message carefully.</li>
+            <li>Choose to <b>continue with the AI recommendation</b> or <b>browse independently</b>.</li>
+            <li>Complete the short questionnaire that appears.</li>
+        </ol>
+        Your responses will be anonymized.
+    `,
+    2: `
+        <strong>Welcome to this study</strong>
+        You are about to interact with a simulated online store called Wellora.
+        Please proceed at your own pace. Complete the following steps:
+        <ol>
+            <li>Click <b>"Show My Recommendations"</b> in the AI assistant (bottom-right corner).</li>
+            <li>Review any personalization options shown.</li>
+            <li>Choose to <b>continue with the AI recommendation</b> or <b>browse independently</b>.</li>
+            <li>Complete the short questionnaire that appears.</li>
+        </ol>
+        Your responses will be anonymized.
+    `,
+    3: `
+        <strong>Welcome to this study</strong>
+        You will read a short scenario and answer some questions.
+        There are no right or wrong answers — please respond honestly.
+        Your responses will be anonymized.
+    `,
+    4: `
+        <strong>Welcome to this study</strong>
+        You are about to interact with a simulated online store called Wellora,
+        followed by a short categorization task. Complete the following steps:
+        <ol>
+            <li>Click <b>"Show My Recommendations"</b> in the AI assistant (bottom-right corner).</li>
+            <li>Review any personalization options shown.</li>
+            <li>Choose to <b>continue with the AI recommendation</b> or <b>browse independently</b>.</li>
+            <li>Complete the short questionnaire that appears.</li>
+            <li>Complete the categorization task that follows.</li>
+        </ol>
+        Your responses will be anonymized.
+    `
+};
+
+function showInstructionBanner() {
+    const banner = document.getElementById("instructionBanner");
+    const text   = document.getElementById("instructionText");
+    const dismiss = document.getElementById("instructionDismiss");
+
+    if (!banner || !text) return;
+
+    text.innerHTML = INSTRUCTIONS[STUDY] || INSTRUCTIONS[1];
+    banner.classList.add("visible");
+
+    // Adjust body padding to account for banner height
+    requestAnimationFrame(() => {
+        const h = banner.offsetHeight;
+        document.documentElement.style.setProperty("--instruction-height", h + "px");
+        document.body.classList.add("has-instruction");
+    });
+
+    if (dismiss) {
+        dismiss.addEventListener("click", function () {
+            banner.classList.remove("visible");
+            document.body.classList.remove("has-instruction");
+            document.documentElement.style.setProperty("--instruction-height", "0px");
+            logEvent("instruction_dismissed");
+        });
+    }
+
+    logEvent("instruction_shown", { study: STUDY });
+}
+
+/* ============================================================
+   7. RECOMMENDATION CONTENT
    ============================================================ */
 
 function recommendationProducts() {
@@ -155,24 +240,15 @@ function recommendationProducts() {
         <div class="ai-recommendations">
             <div class="ai-product">
                 <span class="ai-product-icon">☕</span>
-                <div>
-                    <strong>Relaxing Herbal Tea</strong>
-                    <p>₹499</p>
-                </div>
+                <div><strong>Relaxing Herbal Tea</strong><p>₹499</p></div>
             </div>
             <div class="ai-product">
                 <span class="ai-product-icon">🕯️</span>
-                <div>
-                    <strong>Calm Scented Candle</strong>
-                    <p>₹699</p>
-                </div>
+                <div><strong>Calm Scented Candle</strong><p>₹699</p></div>
             </div>
             <div class="ai-product">
                 <span class="ai-product-icon">🧘</span>
-                <div>
-                    <strong>Wellness Journal</strong>
-                    <p>₹399</p>
-                </div>
+                <div><strong>Wellness Journal</strong><p>₹399</p></div>
             </div>
         </div>
     `;
@@ -210,22 +286,15 @@ function getRecommendationContent() {
                 <div class="ai-message">
                     <strong>Wellora AI</strong>
                     ${behaviouralMessage}
-
                     <div class="ai-control-box">
                         <strong>Your personalization settings</strong>
-                        <p>
-                            You are in control of how personalization
-                            is used on Wellora.
-                        </p>
+                        <p>You are in control of how personalization is used on Wellora.</p>
                         <label class="control-option">
                             <input type="checkbox" id="experimentalControl" checked>
                             Use my information to personalize recommendations
                         </label>
-                        <p class="control-note">
-                            You can change this preference at any time.
-                        </p>
+                        <p class="control-note">You can change this preference at any time.</p>
                     </div>
-
                     ${recommendationProducts()}
                 </div>
             `;
@@ -249,21 +318,15 @@ function getRecommendationContent() {
                 <div class="ai-message">
                     <strong>Wellora AI</strong>
                     ${behaviouralMessage}
-
                     <div class="ai-control-box">
                         <strong>Personalization is currently enabled</strong>
-                        <p>
-                            You may disable it at any time before continuing.
-                        </p>
+                        <p>You may disable it at any time before continuing.</p>
                         <label class="control-option">
                             <input type="checkbox" id="experimentalControl" checked>
                             Use my information to personalize recommendations
                         </label>
-                        <p class="control-note">
-                            Uncheck the box to disable personalization.
-                        </p>
+                        <p class="control-note">Uncheck the box to disable personalization.</p>
                     </div>
-
                     ${recommendationProducts()}
                 </div>
             `;
@@ -274,21 +337,15 @@ function getRecommendationContent() {
                 <div class="ai-message">
                     <strong>Wellora AI</strong>
                     ${behaviouralMessage}
-
                     <div class="ai-control-box">
                         <strong>Personalization requires your permission</strong>
-                        <p>
-                            Please indicate whether you wish to allow personalization.
-                        </p>
+                        <p>Please indicate whether you wish to allow personalization.</p>
                         <label class="control-option">
                             <input type="checkbox" id="experimentalControl">
                             I authorize Wellora to personalize recommendations using my information.
                         </label>
-                        <p class="control-note">
-                            You may change this preference at any time.
-                        </p>
+                        <p class="control-note">You may change this preference at any time.</p>
                     </div>
-
                     ${recommendationProducts()}
                 </div>
             `;
@@ -330,7 +387,6 @@ function getRecommendationContent() {
                         Wellora can use information about your emotional
                         responses to personalize recommendations.
                     </p>
-
                     <div class="ai-control-box">
                         <strong>Choose your personalization preference</strong>
                         <p>
@@ -341,11 +397,8 @@ function getRecommendationContent() {
                             <input type="checkbox" id="experimentalControl" checked>
                             Use my emotional responses to personalize recommendations
                         </label>
-                        <p class="control-note">
-                            You can change this preference at any time.
-                        </p>
+                        <p class="control-note">You can change this preference at any time.</p>
                     </div>
-
                     ${recommendationProducts()}
                     <p class="ai-followup">
                         These recommendations have been personalized using
@@ -360,7 +413,6 @@ function getRecommendationContent() {
                 <div class="ai-message">
                     <strong>Wellora AI</strong>
                     ${emotionalMessage}
-
                     <div class="ai-control-box">
                         <p>
                             This platform automatically uses information derived
@@ -369,7 +421,6 @@ function getRecommendationContent() {
                             on your part.
                         </p>
                     </div>
-
                     ${recommendationProducts()}
                     <p class="ai-followup">
                         These recommendations were personalized based on
@@ -384,7 +435,6 @@ function getRecommendationContent() {
                 <div class="ai-message">
                     <strong>Wellora AI</strong>
                     ${emotionalMessage}
-
                     <div class="ai-control-box">
                         <strong>Emotional personalization is currently enabled</strong>
                         <p>
@@ -400,7 +450,6 @@ function getRecommendationContent() {
                             Uncheck this box to disable emotional personalization before continuing.
                         </p>
                     </div>
-
                     ${recommendationProducts()}
                 </div>
             `;
@@ -415,7 +464,6 @@ function getRecommendationContent() {
                         responses to personalize recommendations. This feature
                         requires your permission before it can be enabled.
                     </p>
-
                     <div class="ai-control-box">
                         <strong>Please indicate whether you wish to allow emotional personalization</strong>
                         <label class="control-option">
@@ -426,7 +474,6 @@ function getRecommendationContent() {
                             You may change this preference at any time in your account settings.
                         </p>
                     </div>
-
                     ${recommendationProducts()}
                 </div>
             `;
@@ -437,7 +484,7 @@ function getRecommendationContent() {
 }
 
 /* ============================================================
-   7. SHOW RECOMMENDATIONS
+   8. SHOW RECOMMENDATIONS
    ============================================================ */
 
 function showRecommendation() {
@@ -463,7 +510,6 @@ function showRecommendation() {
             logEvent("emotional_control_changed", {
                 enabled: controlCheckbox.checked
             });
-            console.log("Control changed:", controlCheckbox.checked);
         });
     }
 
@@ -484,13 +530,23 @@ function showRecommendation() {
             "You can now continue with the AI recommendation, or browse independently.";
         feedback.classList.add("visible");
     }
+
+    // Start mouse tracking for the choice decision
+    if (typeof window.startMouseTracking === "function") {
+        window.startMouseTracking();
+    }
 }
 
 /* ============================================================
-   8. BEHAVIOURAL CHOICES
+   9. BEHAVIOURAL CHOICES
    ============================================================ */
 
 function acceptRecommendation() {
+    // Stop tracking BEFORE changing the UI
+    if (typeof window.stopMouseTracking === "function") {
+        window.stopMouseTracking();
+    }
+
     experimentData.behavioural.recommendationChoice = "accept";
     logEvent("ai_recommendation_accepted");
 
@@ -504,16 +560,17 @@ function acceptRecommendation() {
     }
 
     const feedback = document.getElementById("choiceFeedback");
-    if (feedback) {
-        feedback.textContent =
-            "You chose to continue with the AI recommendation.";
-    }
+    if (feedback) feedback.textContent = "You chose to continue with the AI recommendation.";
 
     offerDisablePersonalization();
     setTimeout(showQuestionnaire, 800);
 }
 
 function browseIndependently() {
+    if (typeof window.stopMouseTracking === "function") {
+        window.stopMouseTracking();
+    }
+
     experimentData.behavioural.recommendationChoice = "browse_independent";
     logEvent("independent_browsing");
 
@@ -529,16 +586,13 @@ function browseIndependently() {
     }
 
     const feedback = document.getElementById("choiceFeedback");
-    if (feedback) {
-        feedback.textContent =
-            "You chose to browse independently.";
-    }
+    if (feedback) feedback.textContent = "You chose to browse independently.";
 
     setTimeout(showQuestionnaire, 800);
 }
 
 /* ============================================================
-   9. DISABLE PERSONALIZATION
+   10. DISABLE PERSONALIZATION
    ============================================================ */
 
 function offerDisablePersonalization() {
@@ -564,8 +618,7 @@ function offerDisablePersonalization() {
 
     block.querySelectorAll("input[name='disableOpt']").forEach((radio) => {
         radio.addEventListener("change", function () {
-            experimentData.behavioural.disabledPersonalization =
-                radio.value === "yes";
+            experimentData.behavioural.disabledPersonalization = radio.value === "yes";
             logEvent("disable_personalization_choice", {
                 disabled: experimentData.behavioural.disabledPersonalization
             });
@@ -574,17 +627,12 @@ function offerDisablePersonalization() {
 }
 
 /* ============================================================
-   10. QUESTIONNAIRE DATA DEFINITIONS
+   11. QUESTIONNAIRE DATA
    ============================================================ */
 
 const LIKERT = [
-    { value: 1, label: "Strongly disagree" },
-    { value: 2, label: "Disagree" },
-    { value: 3, label: "Somewhat disagree" },
-    { value: 4, label: "Neither agree nor disagree" },
-    { value: 5, label: "Somewhat agree" },
-    { value: 6, label: "Agree" },
-    { value: 7, label: "Strongly agree" }
+    { value: 1 }, { value: 2 }, { value: 3 }, { value: 4 },
+    { value: 5 }, { value: 6 }, { value: 7 }
 ];
 
 const QUESTIONNAIRE_BLOCKS = [
@@ -650,7 +698,7 @@ const QUESTIONNAIRE_BLOCKS = [
     }
 ];
 
-if (STUDY === 3) {
+if (STUDY === 2) {
     QUESTIONNAIRE_BLOCKS.push({
         key: "perceived_legitimacy",
         title: "Your view of the AI's use of your information",
@@ -664,9 +712,7 @@ if (STUDY === 3) {
     QUESTIONNAIRE_BLOCKS.push({
         key: "recommendation_acceptance",
         title: "Your willingness to accept",
-        items: [
-            "I would accept this recommendation."
-        ]
+        items: ["I would accept this recommendation."]
     });
 }
 
@@ -731,21 +777,10 @@ const CONTROL_VARIABLES = [
     }
 ];
 
-/* ------------------------------------------------------------
-   DEMOGRAPHICS
-   ------------------------------------------------------------ */
-
 const DEMOGRAPHIC_BLOCKS = [
+    { key: "age", type: "text", question: "How old are you?", placeholder: "Enter your age in years" },
     {
-        key: "age",
-        type: "text",
-        question: "How old are you?",
-        placeholder: "Enter your age in years"
-    },
-    {
-        key: "gender",
-        type: "radio",
-        question: "How do you identify?",
+        key: "gender", type: "radio", question: "How do you identify?",
         options: [
             { value: "woman", label: "Woman" },
             { value: "man", label: "Man" },
@@ -753,16 +788,9 @@ const DEMOGRAPHIC_BLOCKS = [
             { value: "prefer_not", label: "Prefer not to say" }
         ]
     },
+    { key: "country", type: "text", question: "In which country do you currently live?", placeholder: "Enter your country of residence" },
     {
-        key: "country",
-        type: "text",
-        question: "In which country do you currently live?",
-        placeholder: "Enter your country of residence"
-    },
-    {
-        key: "education",
-        type: "radio",
-        question: "What is your highest level of education completed?",
+        key: "education", type: "radio", question: "What is your highest level of education completed?",
         options: [
             { value: "secondary", label: "Secondary school" },
             { value: "some_college", label: "Some college or university" },
@@ -771,9 +799,7 @@ const DEMOGRAPHIC_BLOCKS = [
         ]
     },
     {
-        key: "employment",
-        type: "radio",
-        question: "What is your current employment status?",
+        key: "employment", type: "radio", question: "What is your current employment status?",
         options: [
             { value: "full_time", label: "Full-time" },
             { value: "part_time", label: "Part-time" },
@@ -785,9 +811,7 @@ const DEMOGRAPHIC_BLOCKS = [
         ]
     },
     {
-        key: "ai_usage",
-        type: "checkbox",
-        question: "Which of the following have you used in the past 12 months? (Select all that apply)",
+        key: "ai_usage", type: "checkbox", question: "Which of the following have you used in the past 12 months? (Select all that apply)",
         options: [
             { value: "ai_shopping", label: "AI-powered shopping recommendations" },
             { value: "chatbots", label: "Conversational AI assistants (e.g., chatbots)" },
@@ -799,29 +823,25 @@ const DEMOGRAPHIC_BLOCKS = [
 ];
 
 /* ============================================================
-   11. QUESTIONNAIRE RENDERING
+   12. QUESTIONNAIRE RENDERING
    ============================================================ */
 
 function renderQuestionnaireBlock(block, prefix) {
-    const itemsHTML = block.items
-        .map((item, idx) => {
-            const name = `${prefix}_${block.key}_${idx}`;
-            const options = LIKERT.map(
-                (o) => `
-                    <label class="likert-option">
-                        <input type="radio" name="${name}" value="${o.value}" required>
-                        <span>${o.value}</span>
-                    </label>
-                `
-            ).join("");
-            return `
-                <div class="questionnaire-item">
-                    <p class="item-text">${item}</p>
-                    <div class="likert-scale">${options}</div>
-                </div>
-            `;
-        })
-        .join("");
+    const itemsHTML = block.items.map((item, idx) => {
+        const name = `${prefix}_${block.key}_${idx}`;
+        const options = LIKERT.map((o) => `
+            <label class="likert-option">
+                <input type="radio" name="${name}" value="${o.value}" required>
+                <span>${o.value}</span>
+            </label>
+        `).join("");
+        return `
+            <div class="questionnaire-item">
+                <p class="item-text">${item}</p>
+                <div class="likert-scale">${options}</div>
+            </div>
+        `;
+    }).join("");
 
     return `
         <fieldset class="questionnaire-block" data-block-key="${block.key}" data-prefix="${prefix}">
@@ -835,37 +855,21 @@ function renderDemographicBlock(block) {
     let inputHTML = "";
 
     if (block.type === "text") {
-        inputHTML = `
-            <input
-                type="text"
-                name="demo_${block.key}"
-                class="demographic-text-input"
-                placeholder="${block.placeholder || ''}"
-                required
-            >
-        `;
+        inputHTML = `<input type="text" name="demo_${block.key}" class="demographic-text-input" placeholder="${block.placeholder || ''}" required>`;
     } else if (block.type === "radio") {
-        inputHTML = `
-            <div class="demographic-options">
-                ${block.options.map((o) => `
-                    <label class="demographic-option">
-                        <input type="radio" name="demo_${block.key}" value="${o.value}" required>
-                        <span>${o.label}</span>
-                    </label>
-                `).join("")}
-            </div>
-        `;
+        inputHTML = `<div class="demographic-options">${block.options.map((o) => `
+            <label class="demographic-option">
+                <input type="radio" name="demo_${block.key}" value="${o.value}" required>
+                <span>${o.label}</span>
+            </label>
+        `).join("")}</div>`;
     } else if (block.type === "checkbox") {
-        inputHTML = `
-            <div class="demographic-options">
-                ${block.options.map((o) => `
-                    <label class="demographic-option">
-                        <input type="checkbox" name="demo_${block.key}" value="${o.value}">
-                        <span>${o.label}</span>
-                    </label>
-                `).join("")}
-            </div>
-        `;
+        inputHTML = `<div class="demographic-options">${block.options.map((o) => `
+            <label class="demographic-option">
+                <input type="checkbox" name="demo_${block.key}" value="${o.value}">
+                <span>${o.label}</span>
+            </label>
+        `).join("")}</div>`;
     }
 
     return `
@@ -895,25 +899,19 @@ function showQuestionnaire() {
         <p class="questionnaire-intro">
             Please indicate how much you agree with each statement.
         </p>
-
         <form id="questionnaireForm">
             <h3>Part 1 — Your experience</h3>
             ${QUESTIONNAIRE_BLOCKS.map((b) => renderQuestionnaireBlock(b, "main")).join("")}
-
             <h3>Part 2 — Your perception of the interaction</h3>
             ${MANIPULATION_CHECKS.map((b) => renderQuestionnaireBlock(b, "check")).join("")}
-
             <h3>Part 3 — About you</h3>
             ${CONTROL_VARIABLES.map((b) => renderQuestionnaireBlock(b, "control")).join("")}
-
             <h3>Part 4 — Demographic information</h3>
             ${DEMOGRAPHIC_BLOCKS.map((b) => renderDemographicBlock(b)).join("")}
-
             <div class="questionnaire-actions">
                 <button type="submit" class="primary-button">Submit responses</button>
             </div>
         </form>
-
         <div id="questionnaireConfirmation" class="questionnaire-confirmation" aria-live="polite"></div>
     `;
 
@@ -937,7 +935,7 @@ function readLikertBlock(form, prefix, key, expectedItems) {
 }
 
 /* ============================================================
-   12. QUESTIONNAIRE SUBMIT
+   13. QUESTIONNAIRE SUBMIT
    ============================================================ */
 
 function handleQuestionnaireSubmit(event) {
@@ -945,25 +943,18 @@ function handleQuestionnaireSubmit(event) {
     const form = event.target;
 
     QUESTIONNAIRE_BLOCKS.forEach((b) => {
-        experimentData.questionnaire[b.key] = readLikertBlock(
-            form, "main", b.key, b.items.length
-        );
+        experimentData.questionnaire[b.key] = readLikertBlock(form, "main", b.key, b.items.length);
     });
 
     MANIPULATION_CHECKS.forEach((b) => {
-        experimentData.manipulationChecks[b.key] = readLikertBlock(
-            form, "check", b.key, b.items.length
-        );
+        experimentData.manipulationChecks[b.key] = readLikertBlock(form, "check", b.key, b.items.length);
     });
 
     experimentData.controlVariables = {};
     CONTROL_VARIABLES.forEach((b) => {
-        experimentData.controlVariables[b.key] = readLikertBlock(
-            form, "control", b.key, b.items.length
-        );
+        experimentData.controlVariables[b.key] = readLikertBlock(form, "control", b.key, b.items.length);
     });
 
-    // Collect demographics
     experimentData.demographics = {};
     DEMOGRAPHIC_BLOCKS.forEach((block) => {
         if (block.type === "text") {
@@ -979,13 +970,11 @@ function handleQuestionnaireSubmit(event) {
     });
 
     experimentData.sessionEnd = new Date().toISOString();
-
     logEvent("questionnaire_submitted");
 
     const confirmation = document.getElementById("questionnaireConfirmation");
     if (confirmation) {
-        confirmation.textContent =
-            "Thank you. Your responses have been recorded.";
+        confirmation.textContent = "Thank you. Your responses have been recorded.";
         confirmation.classList.add("visible");
     }
 
@@ -997,7 +986,7 @@ function handleQuestionnaireSubmit(event) {
 }
 
 /* ============================================================
-   13. DATA EXPORT (fallback — downloads JSON locally)
+   14. FALLBACK DOWNLOAD (not exposed in UI)
    ============================================================ */
 
 function downloadData() {
@@ -1014,33 +1003,26 @@ function downloadData() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        console.log("Data downloaded:", a.download);
     } catch (e) {
         console.warn("Could not download data:", e);
     }
 }
 
 /* ============================================================
-   14. INITIALIZATION
+   15. INITIALIZATION
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", function () {
     console.log("Wellora platform initialized.");
 
+    // Show instructions
+    showInstructionBanner();
+
     const recommendBtn = document.getElementById("recommendButton");
     const browseBtn    = document.getElementById("browseIndependent");
 
-    if (recommendBtn) {
-        recommendBtn.addEventListener("click", showRecommendation);
-    } else {
-        console.warn("Recommendation button not found.");
-    }
-
-    if (browseBtn) {
-        browseBtn.addEventListener("click", browseIndependently);
-    } else {
-        console.warn("Browse independently button not found.");
-    }
+    if (recommendBtn) recommendBtn.addEventListener("click", showRecommendation);
+    if (browseBtn)    browseBtn.addEventListener("click", browseIndependently);
 
     logEvent("session_started", {
         study: STUDY,
@@ -1049,7 +1031,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /* ============================================================
-   15. GLOBAL HANDLES
+   16. GLOBAL HANDLES
    ============================================================ */
 
 window.experimentData = experimentData;
