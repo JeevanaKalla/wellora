@@ -1,26 +1,21 @@
 /* ============================================================
-   WELLORA — MOUSE TRACKING MODULE
-   Captures cursor trajectories during the choice decision.
-   Active in Studies 1, 2, and 4 (interactive conditions only).
+   WELLORA — MOUSE TRACKING MODULE (v2, corrected)
    ============================================================ */
 
 const mouseTracking = {
     active: false,
-    trajectory: [],           // {x, y, t}
+    trajectory: [],
     startTime: null,
     endTime: null,
-    hoverStart: {},           // {buttonId: timestamp}
-    hoverTotal: {},           // {buttonId: totalMs}
-    clickCount: 0,
-    lastDirection: null,
+    hoverStart: {},
+    hoverTotal: {},
     reversalCount: 0,
+    lastAngle: null,
+    chosenOption: null,
     _bound: false,
-    _container: null
+    _container: null,
+    _moveHandler: null
 };
-
-/* ============================================================
-   START TRACKING
-   ============================================================ */
 
 function startMouseTracking() {
     if (mouseTracking.active) return;
@@ -37,30 +32,29 @@ function startMouseTracking() {
     mouseTracking.endTime = null;
     mouseTracking.hoverStart = {};
     mouseTracking.hoverTotal = {};
-    mouseTracking.clickCount = 0;
-    mouseTracking.lastDirection = null;
     mouseTracking.reversalCount = 0;
+    mouseTracking.lastAngle = null;
+    mouseTracking.chosenOption = null;
     mouseTracking._container = container;
 
-    if (!mouseTracking._bound) {
-        document.addEventListener("mousemove", handleMouseMove);
-        mouseTracking._bound = true;
+    // Remove any previous binding, then bind fresh
+    if (mouseTracking._moveHandler) {
+        document.removeEventListener("mousemove", mouseTracking._moveHandler);
     }
+    mouseTracking._moveHandler = handleMouseMove;
+    document.addEventListener("mousemove", mouseTracking._moveHandler);
 
     console.log("Mouse tracking started.");
 }
 
-/* ============================================================
-   STOP TRACKING
-   ============================================================ */
-
-function stopMouseTracking() {
+function stopMouseTracking(chosenOption) {
     if (!mouseTracking.active) return;
 
     mouseTracking.active = false;
     mouseTracking.endTime = performance.now();
+    mouseTracking.chosenOption = chosenOption || null;
 
-    // Close any open hover timers
+    // Flush any open hover timers
     const now = performance.now();
     Object.keys(mouseTracking.hoverStart).forEach((btnId) => {
         if (mouseTracking.hoverStart[btnId]) {
@@ -71,17 +65,18 @@ function stopMouseTracking() {
         }
     });
 
-    console.log("Mouse tracking stopped. Trajectory length:", mouseTracking.trajectory.length);
+    // Unbind
+    if (mouseTracking._moveHandler) {
+        document.removeEventListener("mousemove", mouseTracking._moveHandler);
+        mouseTracking._moveHandler = null;
+    }
 
-    // Attach to experimentData
+    console.log("Mouse tracking stopped. Trajectory:", mouseTracking.trajectory.length, "points");
+
     if (window.experimentData) {
         window.experimentData.mouseTracking = computeMouseMetrics();
     }
 }
-
-/* ============================================================
-   MOUSE MOVE HANDLER
-   ============================================================ */
 
 function handleMouseMove(event) {
     if (!mouseTracking.active) return;
@@ -90,43 +85,42 @@ function handleMouseMove(event) {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    // Only record if cursor is within the widget bounds
     if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
 
     const t = performance.now() - mouseTracking.startTime;
-
     mouseTracking.trajectory.push({ x, y, t });
 
-    // Direction tracking for reversals
+    // Reversal detection
     const len = mouseTracking.trajectory.length;
-    if (len >= 3) {
-        const p1 = mouseTracking.trajectory[len - 3];
-        const p2 = mouseTracking.trajectory[len - 2];
-        const p3 = mouseTracking.trajectory[len - 1];
-        const dir1 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-        const dir2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
-        const angleChange = Math.abs(normalizeAngle(dir2 - dir1));
-
-        if (angleChange > Math.PI / 3) {  // > 60°
-            mouseTracking.reversalCount++;
+    if (len >= 5) {
+        const p1 = mouseTracking.trajectory[len - 5];
+        const p2 = mouseTracking.trajectory[len - 1];
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        if (Math.abs(dx) + Math.abs(dy) > 4) {
+            const angle = Math.atan2(dy, dx);
+            if (mouseTracking.lastAngle !== null) {
+                const change = Math.abs(normalizeAngle(angle - mouseTracking.lastAngle));
+                if (change > Math.PI / 2.5) {
+                    mouseTracking.reversalCount++;
+                }
+            }
+            mouseTracking.lastAngle = angle;
         }
-        mouseTracking.lastDirection = dir2;
     }
 
-    // Hover detection per button
-    const buttons = ["recommendButton", "browseIndependent"];
-    buttons.forEach((btnId) => {
+    // Hover tracking per button
+    ["recommendButton", "browseIndependent"].forEach((btnId) => {
         const btn = document.getElementById(btnId);
         if (!btn) return;
-        const btnRect = btn.getBoundingClientRect();
+        const br = btn.getBoundingClientRect();
         const inBtn =
-            event.clientX >= btnRect.left &&
-            event.clientX <= btnRect.right &&
-            event.clientY >= btnRect.top &&
-            event.clientY <= btnRect.bottom;
+            event.clientX >= br.left &&
+            event.clientX <= br.right &&
+            event.clientY >= br.top &&
+            event.clientY <= br.bottom;
 
         const wasIn = mouseTracking.hoverStart[btnId] != null;
-
         if (inBtn && !wasIn) {
             mouseTracking.hoverStart[btnId] = performance.now();
         } else if (!inBtn && wasIn) {
@@ -144,64 +138,64 @@ function normalizeAngle(a) {
     return a;
 }
 
-/* ============================================================
-   COMPUTE METRICS
-   ============================================================ */
-
 function computeMouseMetrics() {
     const traj = mouseTracking.trajectory;
-    const start = mouseTracking.startTime;
-    const end = mouseTracking.endTime;
+    const container = mouseTracking._container;
+    const width = container ? container.getBoundingClientRect().width : 1;
 
     const metrics = {
-        decisionLatency: end && start ? Math.round(end - start) : null,
+        decisionLatency: mouseTracking.endTime && mouseTracking.startTime
+            ? Math.round(mouseTracking.endTime - mouseTracking.startTime)
+            : null,
         pointCount: traj.length,
         hoverTimeAcceptBtn: Math.round(mouseTracking.hoverTotal["recommendButton"] || 0),
         hoverTimeBrowseBtn: Math.round(mouseTracking.hoverTotal["browseIndependent"] || 0),
-        reversalCount: mouseTracking.reversalCount
+        reversalCount: mouseTracking.reversalCount,
+        chosenOption: mouseTracking.chosenOption
     };
 
-    // Trajectory AUC (area under curve relative to the straight line)
-    if (traj.length >= 3) {
+    // Trajectory metrics: only if we have enough points
+    if (traj.length >= 10) {
         const first = traj[0];
         const last = traj[traj.length - 1];
         const dx = last.x - first.x;
         const dy = last.y - first.y;
-        const lineLen = Math.sqrt(dx * dx + dy * dy);
+        const lineLen = Math.sqrt(dx * dx + dy * dy) || 1;
 
-        if (lineLen > 0) {
-            let maxDeviation = 0;
-            traj.forEach((p) => {
-                const dist = Math.abs(
-                    dy * (p.x - first.x) - dx * (p.y - first.y)
-                ) / lineLen;
-                if (dist > maxDeviation) maxDeviation = dist;
-            });
-            metrics.maxDeviation = Math.round(maxDeviation);
-            metrics.trajectoryAUC = +(maxDeviation / lineLen).toFixed(3);
-        } else {
-            metrics.maxDeviation = 0;
-            metrics.trajectoryAUC = 0;
+        // Max absolute deviation (in pixels)
+        let maxDev = 0;
+        traj.forEach((p) => {
+            const dist = Math.abs(
+                dy * (p.x - first.x) - dx * (p.y - first.y)
+            ) / lineLen;
+            if (dist > maxDev) maxDev = dist;
+        });
+        metrics.maxDeviationPx = Math.round(maxDev);
+
+        // Normalized: max dev / container width (0 to 1-ish)
+        metrics.maxDeviationNorm = +(maxDev / width).toFixed(3);
+
+        // Trajectory length (sum of segments) / straight-line distance
+        // This is the "directness ratio" — 1.0 = perfectly direct, >1 = meandering
+        let pathLen = 0;
+        for (let i = 1; i < traj.length; i++) {
+            const p = traj[i - 1];
+            const q = traj[i];
+            pathLen += Math.sqrt(
+                (q.x - p.x) ** 2 + (q.y - p.y) ** 2
+            );
         }
+        metrics.pathLengthPx = Math.round(pathLen);
+        metrics.directness = +(pathLen / lineLen).toFixed(3);
     } else {
-        metrics.maxDeviation = 0;
-        metrics.trajectoryAUC = 0;
+        metrics.maxDeviationPx = 0;
+        metrics.maxDeviationNorm = 0;
+        metrics.pathLengthPx = 0;
+        metrics.directness = 1;
     }
-
-    // Chosen option
-    metrics.chosenOption =
-        window.experimentData &&
-        window.experimentData.behavioural &&
-        window.experimentData.behavioural.recommendationChoice
-            ? window.experimentData.behavioural.recommendationChoice
-            : null;
 
     return metrics;
 }
-
-/* ============================================================
-   GLOBAL HANDLES
-   ============================================================ */
 
 window.startMouseTracking = startMouseTracking;
 window.stopMouseTracking = stopMouseTracking;
