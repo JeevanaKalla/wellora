@@ -1,6 +1,6 @@
 /* ============================================================
    WELLORA EXPERIMENTAL SHOPPING PLATFORM
-   Studies 1–4 — Complete Logic (final, clean version)
+   Studies 1–4 — Complete Logic (full fix)
    ============================================================ */
 
 /* ============================================================
@@ -42,11 +42,6 @@ async function submitToServer() {
 
 /* ------------------------------------------------------------
    CONDITION MAPS
-   ------------------------------------------------------------
-   Study 1: 2 (personalization) x 2 (control) = 4 cells
-   Study 2: 2 (personalization) x 3 (control: none/optout/optin) = 6 cells
-   Study 3: same 6 cells (used in scenario mode)
-   Study 4: same 4 cells as Study 1 + IAT
    ------------------------------------------------------------ */
 
 const STUDY1_CONDITIONS = {
@@ -67,7 +62,7 @@ const STUDY2_CONDITIONS = {
 
 function getConditionMap() {
     if (STUDY === 2) return STUDY2_CONDITIONS;
-    if (STUDY === 3) return STUDY2_CONDITIONS;  // scenario uses 6-cell design
+    if (STUDY === 3) return STUDY2_CONDITIONS;  // scenario uses same 6-cell design
     return STUDY1_CONDITIONS;
 }
 
@@ -218,7 +213,6 @@ function showInstructionBanner() {
     text.innerHTML = INSTRUCTIONS[STUDY] || INSTRUCTIONS[1];
     banner.classList.add("visible");
 
-    // Adjust body padding to account for banner height
     requestAnimationFrame(() => {
         const h = banner.offsetHeight;
         document.documentElement.style.setProperty("--instruction-height", h + "px");
@@ -226,7 +220,6 @@ function showInstructionBanner() {
     });
 
     if (dismiss) {
-        // Ensure the handler is bound only once
         dismiss.onclick = function () {
             banner.classList.remove("visible");
             document.body.classList.remove("has-instruction");
@@ -239,7 +232,7 @@ function showInstructionBanner() {
 }
 
 /* ============================================================
-   7. RECOMMENDATION CONTENT
+   7. RECOMMENDATION CONTENT (interactive mode)
    ============================================================ */
 
 function recommendationProducts() {
@@ -264,8 +257,6 @@ function recommendationProducts() {
 function getRecommendationContent() {
     const p = CURRENT_CONDITION.personalization;
     const c = CURRENT_CONDITION.control;
-
-    /* ---------- LOW PERSONALIZATION ---------- */
 
     if (p === "low") {
 
@@ -360,8 +351,6 @@ function getRecommendationContent() {
             `;
         }
     }
-
-    /* ---------- HIGH PERSONALIZATION ---------- */
 
     if (p === "high") {
 
@@ -542,7 +531,6 @@ function showRecommendation() {
         feedback.classList.add("visible");
     }
 
-    // Start mouse tracking
     if (typeof window.startMouseTracking === "function") {
         window.startMouseTracking();
     }
@@ -639,7 +627,7 @@ function offerDisablePersonalization() {
 }
 
 /* ============================================================
-   11. QUESTIONNAIRE DATA
+   11. QUESTIONNAIRE DATA — PER-STUDY ITEM SETS
    ============================================================ */
 
 const LIKERT = [
@@ -647,89 +635,116 @@ const LIKERT = [
     { value: 5 }, { value: 6 }, { value: 7 }
 ];
 
-const QUESTIONNAIRE_BLOCKS = [
-    {
-        key: "perceived_emotional_understanding",
-        title: "Your perception of the AI",
-        items: [
-            "The AI seemed to understand how I was feeling.",
-            "The AI appeared sensitive to my emotional state.",
-            "The AI seemed to recognize my feelings.",
-            "The AI responded appropriately to how I was feeling."
-        ]
-    },
-    {
-        key: "emotional_engagement",
-        title: "Your emotional engagement",
-        items: [
-            "I felt emotionally engaged with the interaction.",
-            "The interaction made me feel connected to the brand.",
-            "I felt emotionally involved in the experience.",
-            "The interaction resonated with me emotionally."
-        ]
-    },
-    {
-        key: "perceived_emotional_manipulation",
-        title: "Your perception of the AI's intent",
-        items: [
-            "The AI was trying to use my emotions to influence my decision.",
-            "I felt that my feelings were being used to persuade me.",
-            "The AI appeared to be deliberately influencing my emotions for commercial purposes.",
-            "The AI was exploiting my emotional state to get me to buy something."
-        ]
-    },
-    {
-        key: "autonomy_threat",
-        title: "Your sense of autonomy",
-        items: [
-            "I felt that my freedom to make my own decision was threatened.",
-            "The interaction made me feel less in control of my decision.",
-            "I felt that the AI was interfering with my freedom of choice.",
-            "The AI tried to make the decision for me."
-        ]
-    },
-    {
-        key: "psychological_reactance",
-        title: "Your reaction to the AI",
-        items: [
-            "The interaction irritated me.",
-            "I felt like resisting what the AI was suggesting.",
-            "I wanted to do the opposite of what the AI was encouraging me to do.",
-            "The AI's recommendation made me want to push back."
-        ]
-    },
-    {
-        key: "consumer_resistance",
-        title: "Your intention to respond",
-        items: [
-            "I would reject this recommendation.",
-            "I would avoid using this AI recommendation system again.",
-            "I would disregard the AI's suggestion.",
-            "I would actively oppose the AI's attempt to influence me."
-        ]
-    }
+/* ---------- Shared across all studies ---------- */
+
+const CORE_ITEMS = {
+    perceived_emotional_understanding: [
+        "The AI seemed to understand how I was feeling.",
+        "The AI appeared sensitive to my emotional state.",
+        "The AI seemed to recognize my feelings.",
+        "The AI responded appropriately to how I was feeling."
+    ],
+    emotional_engagement: [
+        "I felt emotionally engaged with the interaction.",
+        "The interaction made me feel connected to the brand.",
+        "I felt emotionally involved in the experience.",
+        "The interaction resonated with me emotionally."
+    ],
+    perceived_emotional_manipulation: [
+        "The AI was trying to use my emotions to influence my decision.",
+        "I felt that my feelings were being used to persuade me.",
+        "The AI appeared to be deliberately influencing my emotions for commercial purposes.",
+        "The AI was exploiting my emotional state to get me to buy something."
+    ],
+    autonomy_threat: [
+        "I felt that my freedom to make my own decision was threatened.",
+        "The interaction made me feel less in control of my decision.",
+        "I felt that the AI was interfering with my freedom of choice.",
+        "The AI tried to make the decision for me."
+    ],
+    psychological_reactance: [
+        "The interaction irritated me.",
+        "I felt like resisting what the AI was suggesting.",
+        "I wanted to do the opposite of what the AI was encouraging me to do.",
+        "The AI's recommendation made me want to push back."
+    ]
+};
+
+/* ---------- Resistance — Study 3 gets hypothetical framing ---------- */
+
+const RESISTANCE_ITEMS_INTERACTIVE = [
+    "I would reject this recommendation.",
+    "I would avoid using this AI recommendation system again.",
+    "I would disregard the AI's suggestion.",
+    "I would actively oppose the AI's attempt to influence me."
 ];
 
-// Study 2 (and 3 in scenario mode) add legitimacy + acceptance
-if (STUDY === 2 || STUDY === 3) {
-    QUESTIONNAIRE_BLOCKS.push({
-        key: "perceived_legitimacy",
-        title: "Your view of the AI's use of your information",
-        items: [
-            "It was appropriate for the AI to use my emotional information in this way.",
-            "The AI's use of my emotional information was legitimate.",
-            "I felt that the AI's use of my emotions was fair.",
-            "The AI's emotional personalization was acceptable to me."
-        ]
-    });
-    QUESTIONNAIRE_BLOCKS.push({
-        key: "recommendation_acceptance",
-        title: "Your willingness to accept",
-        items: ["I would accept this recommendation."]
-    });
+const RESISTANCE_ITEMS_SCENARIO = [
+    "I would reject this recommendation.",
+    "I would avoid using this AI recommendation system.",
+    "I would disregard the AI's suggestion.",
+    "I would actively oppose the AI's attempt to influence me."
+];
+
+/* ---------- Process questions (Studies 1 & 4 only) ---------- */
+
+const PROCESS_ITEMS = [
+    "I felt confident about my decision.",
+    "It was difficult for me to decide."
+];
+
+/* ---------- Build per-study questionnaire blocks ---------- */
+
+function buildQuestionnaireBlocks() {
+    const blocks = [
+        { key: "perceived_emotional_understanding", title: "Your perception of the AI", items: CORE_ITEMS.perceived_emotional_understanding },
+        { key: "emotional_engagement", title: "Your emotional engagement", items: CORE_ITEMS.emotional_engagement },
+        { key: "perceived_emotional_manipulation", title: "Your perception of the AI's intent", items: CORE_ITEMS.perceived_emotional_manipulation },
+        { key: "autonomy_threat", title: "Your sense of autonomy", items: CORE_ITEMS.autonomy_threat },
+        { key: "psychological_reactance", title: "Your reaction to the AI", items: CORE_ITEMS.psychological_reactance },
+        {
+            key: "consumer_resistance",
+            title: "Your intention to respond",
+            items: STUDY === 3 ? RESISTANCE_ITEMS_SCENARIO : RESISTANCE_ITEMS_INTERACTIVE
+        }
+    ];
+
+    // Study 1 & 4: add process questions
+    if (STUDY === 1 || STUDY === 4) {
+        blocks.push({
+            key: "decision_process",
+            title: "Your decision process",
+            items: PROCESS_ITEMS
+        });
+    }
+
+    // Study 2 only: add legitimacy + acceptance (interactive context)
+    if (STUDY === 2) {
+        blocks.push({
+            key: "perceived_legitimacy",
+            title: "Your view of the AI's use of your information",
+            items: [
+                "It was appropriate for the AI to use my emotional information in this way.",
+                "The AI's use of my emotional information was legitimate.",
+                "I felt that the AI's use of my emotions was fair.",
+                "The AI's emotional personalization was acceptable to me."
+            ]
+        });
+        blocks.push({
+            key: "recommendation_acceptance",
+            title: "Your willingness to accept",
+            items: ["I would accept this recommendation."]
+        });
+    }
+
+    return blocks;
 }
 
-const MANIPULATION_CHECKS = [
+const QUESTIONNAIRE_BLOCKS = buildQuestionnaireBlocks();
+
+/* ---------- Manipulation checks — per-study wording ---------- */
+
+const MANIPULATION_CHECKS_INTERACTIVE = [
     {
         key: "perceived_emotional_personalization",
         title: "Perception of personalization",
@@ -749,6 +764,32 @@ const MANIPULATION_CHECKS = [
         ]
     }
 ];
+
+const MANIPULATION_CHECKS_SCENARIO = [
+    {
+        key: "perceived_emotional_personalization",
+        title: "Perception of personalization",
+        items: [
+            "The AI in the scenario used information about the user's emotional state.",
+            "The AI appeared to consider how the user was feeling.",
+            "The AI's recommendation was based on the user's emotional responses."
+        ]
+    },
+    {
+        key: "perceived_consumer_control",
+        title: "Perception of control",
+        items: [
+            "The AI gave the user control over whether emotional information was used.",
+            "The AI offered a choice about using the user's emotional responses.",
+            "It was clear the user could decide whether emotional personalization applied."
+        ]
+    }
+];
+
+const MANIPULATION_CHECKS =
+    STUDY === 3 ? MANIPULATION_CHECKS_SCENARIO : MANIPULATION_CHECKS_INTERACTIVE;
+
+/* ---------- Control variables (unchanged) ---------- */
 
 const CONTROL_VARIABLES = [
     {
@@ -790,17 +831,12 @@ const CONTROL_VARIABLES = [
     }
 ];
 
+/* ---------- Demographics (unchanged) ---------- */
+
 const DEMOGRAPHIC_BLOCKS = [
+    { key: "age", type: "text", question: "How old are you?", placeholder: "Enter your age in years" },
     {
-        key: "age",
-        type: "text",
-        question: "How old are you?",
-        placeholder: "Enter your age in years"
-    },
-    {
-        key: "gender",
-        type: "radio",
-        question: "How do you identify?",
+        key: "gender", type: "radio", question: "How do you identify?",
         options: [
             { value: "woman", label: "Woman" },
             { value: "man", label: "Man" },
@@ -808,16 +844,9 @@ const DEMOGRAPHIC_BLOCKS = [
             { value: "prefer_not", label: "Prefer not to say" }
         ]
     },
+    { key: "country", type: "text", question: "In which country do you currently live?", placeholder: "Enter your country of residence" },
     {
-        key: "country",
-        type: "text",
-        question: "In which country do you currently live?",
-        placeholder: "Enter your country of residence"
-    },
-    {
-        key: "education",
-        type: "radio",
-        question: "What is your highest level of education completed?",
+        key: "education", type: "radio", question: "What is your highest level of education completed?",
         options: [
             { value: "secondary", label: "Secondary school" },
             { value: "some_college", label: "Some college or university" },
@@ -826,9 +855,7 @@ const DEMOGRAPHIC_BLOCKS = [
         ]
     },
     {
-        key: "employment",
-        type: "radio",
-        question: "What is your current employment status?",
+        key: "employment", type: "radio", question: "What is your current employment status?",
         options: [
             { value: "full_time", label: "Full-time" },
             { value: "part_time", label: "Part-time" },
@@ -840,9 +867,7 @@ const DEMOGRAPHIC_BLOCKS = [
         ]
     },
     {
-        key: "ai_usage",
-        type: "checkbox",
-        question: "Which of the following have you used in the past 12 months? (Select all that apply)",
+        key: "ai_usage", type: "checkbox", question: "Which of the following have you used in the past 12 months? (Select all that apply)",
         options: [
             { value: "ai_shopping", label: "AI-powered shopping recommendations" },
             { value: "chatbots", label: "Conversational AI assistants (e.g., chatbots)" },
@@ -918,7 +943,6 @@ function showQuestionnaire() {
         return;
     }
 
-    // Guard against double-render
     if (document.getElementById("questionnaireSection")) return;
 
     const section = document.createElement("section");
@@ -1011,7 +1035,6 @@ function handleQuestionnaireSubmit(event) {
 
     form.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
 
-    // Study 4 submits after the IAT; others submit immediately
     if (STUDY !== 4) {
         setTimeout(() => submitToServer(), 600);
     }
@@ -1047,7 +1070,6 @@ function downloadData() {
 document.addEventListener("DOMContentLoaded", function () {
     console.log("Wellora platform initialized. Mode:", MODE, "Study:", STUDY);
 
-    // Scenario mode: hide interactive elements and let scenario.js take over
     if (MODE === "scenario") {
         document.body.classList.add("scenario-mode");
         logEvent("session_started", {
@@ -1055,10 +1077,9 @@ document.addEventListener("DOMContentLoaded", function () {
             mode: MODE,
             conditionID: CONDITION_ID
         });
-        return;  // scenario.js handles the rest
+        return;
     }
 
-    // Interactive mode: standard flow
     showInstructionBanner();
 
     const recommendBtn = document.getElementById("recommendButton");
