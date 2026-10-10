@@ -1279,3 +1279,410 @@ body.has-instruction {
         font-size: 12.5px;
     }
 }
+/* ============================================================
+   15. SCENARIO MODE (Study 3) — Static illustration design
+   ============================================================ */
+
+/* Hide interactive storefront elements when in scenario mode */
+body.scenario-mode .hero,
+body.scenario-mode .products-section,
+body.scenario-mode .ai-assistant {
+    display: none !important;
+}
+
+body.scenario-mode .site-header {
+    border-bottom: 1px solid #eceae7;
+}
+
+body.scenario-mode #questionnaireContainer {
+    display: block;
+    width: 100%;
+}
+
+/* --- Scenario outer section --- */
+
+.scenario-section {
+    display: block;
+    width: 100%;
+    max-width: 900px;
+    margin: 40px auto 100px;
+    padding: 0 6%;
+    box-sizing: border-box;
+}
+
+.scenario-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 34px;
+    width: 100%;
+}
+
+.scenario-heading {
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.scenario-heading h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 34px;
+    font-weight: 500;
+    color: #282522;
+    margin-top: 10px;
+    line-height: 1.2;
+}
+
+/* --- Narrative block --- */
+
+.scenario-narrative {
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: #3a3733;
+    background: #ffffff;
+    border: 1px solid #e3e0dc;
+    border-radius: 14px;
+    padding: 28px 32px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.scenario-narrative p {
+    margin: 0 0 14px;
+}
+
+.scenario-narrative p:last-child {
+    margin-bottom: 0;
+}
+
+.scenario-narrative strong {
+    color: #4e42b8;
+    font-weight: 600;
+}
+
+/* --- Figure wrapper --- */
+
+.scenario-figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+}
+
+.scenario-figure-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: #8a837c;
+    text-align: center;
+}
+
+/* --- Browser-chrome window wrapper --- */
+
+.scenario-window {
+    width: 100%;
+    max-width: 560px;
+    background: #ffffff;
+    border: 1px solid #e0dcd6;
+    border-radius: 16px;
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+/* --- Window chrome --- */
+
+.scenario-window-chrome {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 12px 16px;
+    background: #f4f2ef;
+    border-bottom: 1px solid #e8e3dc;
+}
+
+.scenario-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.scenario-dot.red    { background: #ff5f56; }
+.scenario-dot.yellow { background: #ffbd2e; }
+.scenario-dot.green  { background: #27c93f; }
+
+.scenario-window-title {
+    flex: 1;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #8a837c;
+    letter-spacing: 0.4px;
+    padding-right: 40px; /* offset the dots for visual centering */
+}
+
+/* --- Window body --- */
+
+.scenario-window-body {
+    padding: 24px;
+    background:
+        linear-gradient(180deg, #f7f5f2 0%, #efece8 100%);
+}
+
+/* --- Rendered AI widget --- */
+
+.scenario-widget {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+.scenario-widget-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #5b4bdb, #7b61ff);
+    color: white;
+}
+
+.scenario-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    flex-shrink: 0;
+}
+
+.scenario-header-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.scenario-widget-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.scenario-widget-header p {
+    margin: 3px 0 0;
+    font-size: 11px;
+    opacity: 0.85;
+}
+
+.scenario-status {
+    font-size: 10px;
+    color: #d7ffd9;
+    white-space: nowrap;
+}
+
+.scenario-widget-body {
+    padding: 18px;
+    background: #f8f8fb;
+}
+
+/* --- Message --- */
+
+.scenario-message {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    margin-bottom: 12px;
+}
+
+.scenario-message strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #5b4bdb;
+    font-size: 13px;
+}
+
+.scenario-message p {
+    margin: 7px 0;
+    color: #444;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+/* --- Control box (static, non-interactive) --- */
+
+.scenario-control-box {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f5f4ff;
+    border: 1px solid #ddd9ff;
+    border-radius: 10px;
+}
+
+.scenario-control-box > strong {
+    display: block;
+    color: #4e42b8;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.scenario-control-box p {
+    font-size: 11px;
+    line-height: 1.5;
+    color: #555;
+    margin: 4px 0;
+}
+
+.scenario-checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #333;
+}
+
+/* --- Non-interactive checkbox look --- */
+
+.scenario-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #b8b3d9;
+    border-radius: 3px;
+    background: #ffffff;
+    font-size: 12px;
+    flex-shrink: 0;
+    color: transparent;
+    font-weight: 700;
+    cursor: default;
+    pointer-events: none;
+    user-select: none;
+}
+
+.scenario-checkbox.checked {
+    background: #5b4bdb;
+    border-color: #5b4bdb;
+    color: #ffffff;
+}
+
+.scenario-note {
+    margin-top: 8px !important;
+    font-size: 10px !important;
+    color: #888 !important;
+    font-style: italic;
+}
+
+/* --- Recommendations --- */
+
+.scenario-recommendations {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.scenario-product {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #eeeeee;
+    border-radius: 9px;
+    background: #fafafa;
+}
+
+.scenario-product-icon {
+    width: 35px;
+    height: 35px;
+    border-radius: 8px;
+    background: #eeeaff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.scenario-product strong {
+    color: #333;
+    font-size: 12px;
+    margin: 0;
+    display: block;
+}
+
+.scenario-product p {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #777;
+}
+
+.scenario-followup {
+    margin-top: 12px !important;
+    font-weight: 500;
+    color: #666 !important;
+    font-size: 12px !important;
+}
+
+/* --- Action button --- */
+
+.scenario-actions {
+    text-align: center;
+    margin-top: 12px;
+}
+
+.scenario-actions .primary-button {
+    padding: 16px 48px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 6px 18px rgba(36, 36, 36, 0.15);
+}
+
+.scenario-actions .primary-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(36, 36, 36, 0.20);
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 700px) {
+    .scenario-section {
+        margin: 24px auto 60px;
+        padding: 0 5%;
+    }
+
+    .scenario-heading h1 {
+        font-size: 26px;
+    }
+
+    .scenario-narrative {
+        padding: 20px 22px;
+        font-size: 14.5px;
+    }
+
+    .scenario-window {
+        max-width: 100%;
+    }
+
+    .scenario-window-body {
+        padding: 16px;
+    }
+
+    .scenario-widget-body {
+        padding: 14px;
+    }
+
+    .scenario-message p,
+    .scenario-message strong {
+        font-size: 12.5px;
+    }
+}
