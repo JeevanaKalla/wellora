@@ -63,7 +63,10 @@
 
 <main>
 
-    <!-- HERO -->
+    <!-- --------------------------------------------------------
+         HERO
+         -------------------------------------------------------- -->
+
     <section class="hero">
         <div class="hero-content">
             <p class="eyebrow">CURATED FOR EVERYDAY LIFE</p>
@@ -82,7 +85,10 @@
     </section>
 
 
-    <!-- PRODUCTS -->
+    <!-- --------------------------------------------------------
+         PRODUCTS
+         -------------------------------------------------------- -->
+
     <section class="products-section">
 
         <div class="section-heading">
@@ -95,8 +101,10 @@
             </button>
         </div>
 
+
         <div class="product-grid">
 
+            <!-- PRODUCT 1 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product1.jpg" alt="Calm Essentials Set">
@@ -114,6 +122,7 @@
                 </div>
             </article>
 
+            <!-- PRODUCT 2 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product2.jpg" alt="Relaxing Herbal Tea">
@@ -131,6 +140,7 @@
                 </div>
             </article>
 
+            <!-- PRODUCT 3 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product3.jpg" alt="Calm Scented Candle">
@@ -148,6 +158,7 @@
                 </div>
             </article>
 
+            <!-- PRODUCT 4 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product4.jpg" alt="Wellness Journal">
@@ -165,6 +176,7 @@
                 </div>
             </article>
 
+            <!-- PRODUCT 5 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product5.jpg" alt="Aromatherapy Diffuser">
@@ -182,6 +194,7 @@
                 </div>
             </article>
 
+            <!-- PRODUCT 6 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product6.jpg" alt="Weighted Blanket">
@@ -199,6 +212,7 @@
                 </div>
             </article>
 
+            <!-- PRODUCT 7 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product7.jpg" alt="Meditation Cushion">
@@ -216,6 +230,7 @@
                 </div>
             </article>
 
+            <!-- PRODUCT 8 -->
             <article class="product-card">
                 <div class="product-image">
                     <img src="images/product8.jpg" alt="Sleep Mask">
@@ -238,18 +253,28 @@
     </section>
 
 
-    <!-- QUESTIONNAIRE CONTAINER -->
+    <!-- --------------------------------------------------------
+         QUESTIONNAIRE CONTAINER
+         (populated by script.js after AI interaction,
+          or by scenario.js in Study 3)
+         -------------------------------------------------------- -->
+
     <section id="questionnaireContainer"></section>
 
 
-    <!-- IAT CONTAINER (Study 4) -->
+    <!-- --------------------------------------------------------
+         IAT CONTAINER (Study 4 only)
+         (populated by iat.js after questionnaire submission)
+         -------------------------------------------------------- -->
+
     <section id="iatContainer"></section>
 
 </main>
 
 
 <!-- ============================================================
-     AI SHOPPING ASSISTANT
+     AI SHOPPING ASSISTANT (fixed floating widget)
+     Studies 1, 2, 4 — hidden in Study 3 (scenario mode)
      ============================================================ -->
 
 <section class="ai-assistant" id="ai-assistant">
@@ -263,6 +288,8 @@
         <div class="ai-status">● Online</div>
     </div>
 
+
+    <!-- AI MESSAGE AREA -->
     <div class="ai-message-area" id="aiMessageArea">
         <div class="ai-message">
             <strong>Wellora AI</strong>
@@ -277,6 +304,8 @@
         </div>
     </div>
 
+
+    <!-- AI ACTIONS -->
     <div class="ai-actions">
         <button
             class="ai-button primary"
@@ -295,6 +324,8 @@
         </button>
     </div>
 
+
+    <!-- CHOICE FEEDBACK -->
     <div
         class="choice-feedback"
         id="choiceFeedback"
@@ -309,6 +340,7 @@
      ============================================================ -->
 
 <footer class="site-footer">
+
     <div>
         <strong>Wellora</strong>
         <p>Thoughtfully selected products for everyday life.</p>
@@ -320,15 +352,22 @@
         <a href="#">Terms</a>
         <a href="#">Help</a>
     </div>
+
 </footer>
 
 
 <!-- ============================================================
      SCRIPTS
+     Load order matters:
+       1. script.js          — core logic, config, questionnaire
+       2. mouse-tracking.js  — Studies 1, 2, 4
+       3. scenario.js        — Study 3 (mode=scenario)
+       4. iat.js             — Study 4
      ============================================================ -->
 
 <script src="script.js"></script>
 <script src="mouse-tracking.js"></script>
+<script src="scenario.js"></script>
 <script src="iat.js"></script>
 
 </body>
