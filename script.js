@@ -1,6 +1,6 @@
 /* ============================================================
    WELLORA EXPERIMENTAL SHOPPING PLATFORM
-   Studies 1–4 — Complete Logic (clean version)
+   Studies 1–4 — Complete Logic (final, clean version)
    ============================================================ */
 
 /* ============================================================
@@ -10,6 +10,7 @@
 const urlParams = new URLSearchParams(window.location.search);
 const STUDY = parseInt(urlParams.get("study")) || 1;
 const CONDITION_OVERRIDE = urlParams.get("condition");
+const MODE = urlParams.get("mode") || "interactive";
 
 /* ------------------------------------------------------------
    DATA COLLECTION ENDPOINT
@@ -44,7 +45,8 @@ async function submitToServer() {
    ------------------------------------------------------------
    Study 1: 2 (personalization) x 2 (control) = 4 cells
    Study 2: 2 (personalization) x 3 (control: none/optout/optin) = 6 cells
-   Study 4: 2 x 2 (same as Study 1) + IAT
+   Study 3: same 6 cells (used in scenario mode)
+   Study 4: same 4 cells as Study 1 + IAT
    ------------------------------------------------------------ */
 
 const STUDY1_CONDITIONS = {
@@ -64,7 +66,9 @@ const STUDY2_CONDITIONS = {
 };
 
 function getConditionMap() {
-    return STUDY === 2 ? STUDY2_CONDITIONS : STUDY1_CONDITIONS;
+    if (STUDY === 2) return STUDY2_CONDITIONS;
+    if (STUDY === 3) return STUDY2_CONDITIONS;  // scenario uses 6-cell design
+    return STUDY1_CONDITIONS;
 }
 
 function assignCondition() {
@@ -103,7 +107,7 @@ const sessionStartTime = new Date().toISOString();
 const experimentData = {
     participantID: participantID,
     study: STUDY,
-    mode: "interactive",
+    mode: MODE,
     sessionStart: sessionStartTime,
     conditionID: CONDITION_ID,
     condition: {
@@ -145,6 +149,7 @@ console.log("======================================");
 console.log("WELLORA EXPERIMENTAL PLATFORM");
 console.log("======================================");
 console.log("Study:                    ", STUDY);
+console.log("Mode:                     ", MODE);
 console.log("Participant ID:           ", participantID);
 console.log("Condition ID:             ", CONDITION_ID);
 console.log("Emotional Personalization:", CURRENT_CONDITION.personalization);
@@ -183,7 +188,8 @@ const INSTRUCTIONS = {
     `,
     3: `
         <strong>Welcome to this study</strong>
-        You will read a short scenario and answer some questions.
+        You will read a short scenario about a simulated online shopping
+        experience and answer some questions about it.
         There are no right or wrong answers — please respond honestly.
         Your responses will be anonymized.
     `,
@@ -220,12 +226,13 @@ function showInstructionBanner() {
     });
 
     if (dismiss) {
-        dismiss.addEventListener("click", function () {
+        // Ensure the handler is bound only once
+        dismiss.onclick = function () {
             banner.classList.remove("visible");
             document.body.classList.remove("has-instruction");
             document.documentElement.style.setProperty("--instruction-height", "0px");
             logEvent("instruction_dismissed");
-        });
+        };
     }
 
     logEvent("instruction_shown", { study: STUDY });
@@ -257,6 +264,8 @@ function recommendationProducts() {
 function getRecommendationContent() {
     const p = CURRENT_CONDITION.personalization;
     const c = CURRENT_CONDITION.control;
+
+    /* ---------- LOW PERSONALIZATION ---------- */
 
     if (p === "low") {
 
@@ -351,6 +360,8 @@ function getRecommendationContent() {
             `;
         }
     }
+
+    /* ---------- HIGH PERSONALIZATION ---------- */
 
     if (p === "high") {
 
@@ -506,11 +517,11 @@ function showRecommendation() {
 
     const controlCheckbox = document.getElementById("experimentalControl");
     if (controlCheckbox) {
-        controlCheckbox.addEventListener("change", function () {
+        controlCheckbox.onchange = function () {
             logEvent("emotional_control_changed", {
                 enabled: controlCheckbox.checked
             });
-        });
+        };
     }
 
     if (primaryBtn) {
@@ -531,7 +542,7 @@ function showRecommendation() {
         feedback.classList.add("visible");
     }
 
-    // Start mouse tracking for the choice decision
+    // Start mouse tracking
     if (typeof window.startMouseTracking === "function") {
         window.startMouseTracking();
     }
@@ -542,11 +553,11 @@ function showRecommendation() {
    ============================================================ */
 
 function acceptRecommendation() {
-    // Stop tracking BEFORE changing the UI
     if (typeof window.stopMouseTracking === "function") {
-        window.stopMouseTracking();
+        window.stopMouseTracking("accept");
     }
 
+    if (experimentData.behavioural.recommendationChoice) return;
     experimentData.behavioural.recommendationChoice = "accept";
     logEvent("ai_recommendation_accepted");
 
@@ -568,9 +579,10 @@ function acceptRecommendation() {
 
 function browseIndependently() {
     if (typeof window.stopMouseTracking === "function") {
-        window.stopMouseTracking();
+        window.stopMouseTracking("browse_independent");
     }
 
+    if (experimentData.behavioural.recommendationChoice) return;
     experimentData.behavioural.recommendationChoice = "browse_independent";
     logEvent("independent_browsing");
 
@@ -617,12 +629,12 @@ function offerDisablePersonalization() {
     messageArea.appendChild(block);
 
     block.querySelectorAll("input[name='disableOpt']").forEach((radio) => {
-        radio.addEventListener("change", function () {
+        radio.onchange = function () {
             experimentData.behavioural.disabledPersonalization = radio.value === "yes";
             logEvent("disable_personalization_choice", {
                 disabled: experimentData.behavioural.disabledPersonalization
             });
-        });
+        };
     });
 }
 
@@ -698,7 +710,8 @@ const QUESTIONNAIRE_BLOCKS = [
     }
 ];
 
-if (STUDY === 2) {
+// Study 2 (and 3 in scenario mode) add legitimacy + acceptance
+if (STUDY === 2 || STUDY === 3) {
     QUESTIONNAIRE_BLOCKS.push({
         key: "perceived_legitimacy",
         title: "Your view of the AI's use of your information",
@@ -778,9 +791,16 @@ const CONTROL_VARIABLES = [
 ];
 
 const DEMOGRAPHIC_BLOCKS = [
-    { key: "age", type: "text", question: "How old are you?", placeholder: "Enter your age in years" },
     {
-        key: "gender", type: "radio", question: "How do you identify?",
+        key: "age",
+        type: "text",
+        question: "How old are you?",
+        placeholder: "Enter your age in years"
+    },
+    {
+        key: "gender",
+        type: "radio",
+        question: "How do you identify?",
         options: [
             { value: "woman", label: "Woman" },
             { value: "man", label: "Man" },
@@ -788,9 +808,16 @@ const DEMOGRAPHIC_BLOCKS = [
             { value: "prefer_not", label: "Prefer not to say" }
         ]
     },
-    { key: "country", type: "text", question: "In which country do you currently live?", placeholder: "Enter your country of residence" },
     {
-        key: "education", type: "radio", question: "What is your highest level of education completed?",
+        key: "country",
+        type: "text",
+        question: "In which country do you currently live?",
+        placeholder: "Enter your country of residence"
+    },
+    {
+        key: "education",
+        type: "radio",
+        question: "What is your highest level of education completed?",
         options: [
             { value: "secondary", label: "Secondary school" },
             { value: "some_college", label: "Some college or university" },
@@ -799,7 +826,9 @@ const DEMOGRAPHIC_BLOCKS = [
         ]
     },
     {
-        key: "employment", type: "radio", question: "What is your current employment status?",
+        key: "employment",
+        type: "radio",
+        question: "What is your current employment status?",
         options: [
             { value: "full_time", label: "Full-time" },
             { value: "part_time", label: "Part-time" },
@@ -811,7 +840,9 @@ const DEMOGRAPHIC_BLOCKS = [
         ]
     },
     {
-        key: "ai_usage", type: "checkbox", question: "Which of the following have you used in the past 12 months? (Select all that apply)",
+        key: "ai_usage",
+        type: "checkbox",
+        question: "Which of the following have you used in the past 12 months? (Select all that apply)",
         options: [
             { value: "ai_shopping", label: "AI-powered shopping recommendations" },
             { value: "chatbots", label: "Conversational AI assistants (e.g., chatbots)" },
@@ -887,8 +918,8 @@ function showQuestionnaire() {
         return;
     }
 
-    const existing = document.getElementById("questionnaireSection");
-    if (existing) existing.remove();
+    // Guard against double-render
+    if (document.getElementById("questionnaireSection")) return;
 
     const section = document.createElement("section");
     section.id = "questionnaireSection";
@@ -980,6 +1011,7 @@ function handleQuestionnaireSubmit(event) {
 
     form.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
 
+    // Study 4 submits after the IAT; others submit immediately
     if (STUDY !== 4) {
         setTimeout(() => submitToServer(), 600);
     }
@@ -1013,9 +1045,20 @@ function downloadData() {
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", function () {
-    console.log("Wellora platform initialized.");
+    console.log("Wellora platform initialized. Mode:", MODE, "Study:", STUDY);
 
-    // Show instructions
+    // Scenario mode: hide interactive elements and let scenario.js take over
+    if (MODE === "scenario") {
+        document.body.classList.add("scenario-mode");
+        logEvent("session_started", {
+            study: STUDY,
+            mode: MODE,
+            conditionID: CONDITION_ID
+        });
+        return;  // scenario.js handles the rest
+    }
+
+    // Interactive mode: standard flow
     showInstructionBanner();
 
     const recommendBtn = document.getElementById("recommendButton");
@@ -1026,6 +1069,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     logEvent("session_started", {
         study: STUDY,
+        mode: MODE,
         conditionID: CONDITION_ID
     });
 });
@@ -1041,3 +1085,4 @@ window.showQuestionnaire = showQuestionnaire;
 window.downloadData = downloadData;
 window.logEvent = logEvent;
 window.submitToServer = submitToServer;
+window.showInstructionBanner = showInstructionBanner;
